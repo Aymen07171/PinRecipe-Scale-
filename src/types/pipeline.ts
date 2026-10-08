@@ -12,6 +12,28 @@ export interface PipelineStep {
   iconName: string;
 }
 
+export interface RecipeArticle {
+  title: string;
+  excerpt: string;
+  readingTimeMinutes: number;
+  featuredImageUrl: string;
+  introduction: string;
+  whyYouWillLoveThis: string[];
+  culinarySecrets: string[];
+  stepByStepWalkthrough: Array<{
+    heading: string;
+    description: string;
+    proTip?: string;
+  }>;
+  substitutionsAndVariations: string[];
+  frequentlyAskedQuestions: Array<{
+    question: string;
+    answer: string;
+  }>;
+  storageAndReheating: string;
+  servingSuggestions: string;
+}
+
 export interface RecipeItem {
   id: string;
   topic: string;
@@ -42,6 +64,8 @@ export interface RecipeItem {
   metaDescription: string;
   focusKeyword: string;
   schemaJsonLd?: Record<string, any>;
+  article?: RecipeArticle;
+  articleHtml?: string;
   pinterestPin: {
     title: string;
     description: string;
@@ -65,6 +89,7 @@ export interface WordPressConfig {
   username: string;
   appPassword: string;
   syncApiKey: string;
+  bridgeToken?: string;
   useAutoSyncPlugin: boolean;
   defaultStatus: 'draft' | 'publish' | 'pending';
   isConnected: boolean;

@@ -10,6 +10,9 @@ import { PinterestSchedulerView } from './components/PinterestSchedulerView';
 import { SystemHealthView } from './components/SystemHealthView';
 import { RecipeDetailModal } from './components/RecipeDetailModal';
 import { IngestModal } from './components/IngestModal';
+import { ArticleReaderModal } from './components/ArticleReaderModal';
+import { getCuratedFoodImage } from './utils/imageCurator';
+import { buildCompleteArticle } from './utils/articleGenerator';
 import { 
   INITIAL_RECIPES, 
   DEFAULT_WP_CONFIG, 
@@ -28,6 +31,7 @@ export default function App() {
   // Modals
   const [isIngestModalOpen, setIsIngestModalOpen] = useState(false);
   const [inspectRecipe, setInspectRecipe] = useState<RecipeItem | null>(null);
+  const [articleModalRecipe, setArticleModalRecipe] = useState<RecipeItem | null>(null);
 
   // Pipeline Execution State
   const [isRunningPipeline, setIsRunningPipeline] = useState(false);
@@ -84,7 +88,7 @@ export default function App() {
     setIsRunningPipeline(false);
   };
 
-  // 2. Synthesize Single Recipe with Gemini
+  // 2. Synthesize Single Recipe with AI / Culinary Intelligence
   const handleSynthesizeSingle = async (topic: string, niche: string, dietary: string) => {
     setIsSynthesizingSingle(true);
     try {
@@ -97,7 +101,9 @@ export default function App() {
 
       if (resData.success && resData.data) {
         const d = resData.data;
-        const newRecipe: RecipeItem = {
+        const photoUrl = d.imageUrl || getCuratedFoodImage(topic, niche);
+
+        let newRecipe: RecipeItem = {
           id: `rec-${Date.now().toString().slice(-4)}`,
           topic,
           title: d.title || topic,
@@ -107,7 +113,7 @@ export default function App() {
           status: 'completed',
           currentStepIndex: 4,
           progress: 100,
-          imageUrl: currentSelectedRecipe.imageUrl, // Reuse high-res macro photo asset
+          imageUrl: photoUrl,
           macroPhotoPrompt: d.macroPhotoPrompt || `Macro food photography of ${topic}`,
           prepTime: d.prepTime || '15 mins',
           cookTime: d.cookTime || '20 mins',
@@ -115,7 +121,7 @@ export default function App() {
           servings: d.servings || '4 servings',
           calories: d.calories || 450,
           difficulty: d.difficulty || 'Easy',
-          macros: d.macros || { protein: '25g', carbs: '35g', fat: '15g' },
+          macros: d.macros || { protein: '25g', carbs: '35g', fat: '15g', fiber: '4g' },
           ingredients: d.ingredients || [{ item: 'Fresh ingredients', amount: 'As needed' }],
           instructions: d.instructions || [{ step: 1, title: 'Prepare & Cook', text: 'Follow culinary method.' }],
           chefTips: d.chefTips || ['Season in layers for maximum flavor.'],
@@ -132,20 +138,31 @@ export default function App() {
             status: 'scheduled'
           },
           wpStatus: 'published',
-          wpPostUrl: `https://foodsprepared.wasmer.app/${d.slug || 'recipe'}`,
+          wpPostUrl: `/api/article/${d.id || topic.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
           wpCategory: niche || 'Quick & Easy Dinners',
           createdAt: new Date().toISOString(),
           completedAt: new Date().toISOString(),
           healthScore: 100,
           logEntries: [
             `${new Date().toLocaleTimeString()} - Ingested topic "${topic}"`,
-            `${new Date().toLocaleTimeString()} - Gemini AI synthesized structured nutrition, steps, and JSON-LD schema`,
-            `${new Date().toLocaleTimeString()} - Synced to WordPress and queued Pinterest pin`
+            `${new Date().toLocaleTimeString()} - Synthesized structured nutrition, steps, and JSON-LD schema`,
+            `${new Date().toLocaleTimeString()} - Generated long-form culinary article and Pinterest pin`
           ]
         };
 
-        setRecipes([newRecipe, ...recipes]);
+        newRecipe.wpPostUrl = `/api/article/${newRecipe.id}`;
+        newRecipe.article = buildCompleteArticle(newRecipe);
+
+        // Cache into backend store for immediate standalone URL access
+        fetch('/api/store-recipe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ recipe: newRecipe }),
+        }).catch(() => {});
+
+        setRecipes((prev) => [newRecipe, ...prev]);
         setSelectedRecipeId(newRecipe.id);
+        setInspectRecipe(newRecipe);
       }
     } catch (err) {
       console.error('Synthesis error:', err);
@@ -156,53 +173,68 @@ export default function App() {
 
   // 3. Ingest Multiple Topics from Modal
   const handleIngestTopics = (topics: Array<{ topic: string; niche: string; dietary: string }>) => {
-    const newItems: RecipeItem[] = topics.map((t, idx) => ({
-      id: `rec-${(Date.now() + idx).toString().slice(-4)}`,
-      topic: t.topic,
-      title: t.topic,
-      slug: t.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-      niche: t.niche,
-      dietary: t.dietary,
-      status: 'queued',
-      currentStepIndex: 0,
-      progress: 20,
-      imageUrl: currentSelectedRecipe.imageUrl,
-      macroPhotoPrompt: `Macro close-up food photography of ${t.topic}, 8k studio lighting`,
-      prepTime: '15 mins',
-      cookTime: '25 mins',
-      totalTime: '40 mins',
-      servings: '4 servings',
-      calories: 420,
-      difficulty: 'Easy',
-      macros: { protein: '28g', carbs: '32g', fat: '14g' },
-      ingredients: [
-        { item: 'Key ingredients', amount: '1 batch', notes: 'Freshly prepped' }
-      ],
-      instructions: [
-        { step: 1, title: 'Preparation', text: `Prepare elements for ${t.topic}.` }
-      ],
-      chefTips: ['Use highest quality ingredients.'],
-      metaDescription: `Best ${t.topic} recipe guide with step-by-step instructions.`,
-      focusKeyword: t.topic.toLowerCase(),
-      pinterestPin: {
-        title: `The Ultimate ${t.topic}`,
-        description: `Save this easy, delicious recipe for ${t.topic}! Ready in minutes.`,
-        hashtags: ['#easyrecipes', '#dinner', '#cooking'],
-        overlayHeadline: t.topic,
-        board: t.niche,
-        scheduledTime: 'Tomorrow at 7:00 PM',
-        status: 'pending'
-      },
-      wpStatus: 'draft',
-      wpCategory: t.niche,
-      createdAt: new Date().toISOString(),
-      healthScore: 100,
-      logEntries: [
-        `${new Date().toLocaleTimeString()} - Ingested "${t.topic}" into campaign queue`
-      ]
-    }));
+    const newItems: RecipeItem[] = topics.map((t, idx) => {
+      const photoUrl = getCuratedFoodImage(t.topic, t.niche);
+      const itemId = `rec-${(Date.now() + idx).toString().slice(-4)}`;
+      const item: RecipeItem = {
+        id: itemId,
+        topic: t.topic,
+        title: t.topic,
+        slug: t.topic.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+        niche: t.niche,
+        dietary: t.dietary,
+        status: 'queued',
+        currentStepIndex: 0,
+        progress: 20,
+        imageUrl: photoUrl,
+        macroPhotoPrompt: `Macro close-up food photography of ${t.topic}, 8k studio lighting`,
+        prepTime: '15 mins',
+        cookTime: '25 mins',
+        totalTime: '40 mins',
+        servings: '4 servings',
+        calories: 420,
+        difficulty: 'Easy',
+        macros: { protein: '28g', carbs: '32g', fat: '14g', fiber: '4g' },
+        ingredients: [
+          { item: 'Key fresh ingredients', amount: '1 batch', notes: 'Freshly prepped' }
+        ],
+        instructions: [
+          { step: 1, title: 'Preparation', text: `Prepare elements for ${t.topic}.` }
+        ],
+        chefTips: ['Use highest quality ingredients.'],
+        metaDescription: `Best ${t.topic} recipe guide with step-by-step instructions.`,
+        focusKeyword: t.topic.toLowerCase(),
+        pinterestPin: {
+          title: `The Ultimate ${t.topic}`,
+          description: `Save this easy, delicious recipe for ${t.topic}! Ready in minutes.`,
+          hashtags: ['#easyrecipes', '#dinner', '#cooking'],
+          overlayHeadline: t.topic,
+          board: t.niche,
+          scheduledTime: 'Tomorrow at 7:00 PM',
+          status: 'pending'
+        },
+        wpStatus: 'draft',
+        wpPostUrl: `/api/article/${itemId}`,
+        wpCategory: t.niche,
+        createdAt: new Date().toISOString(),
+        healthScore: 100,
+        logEntries: [
+          `${new Date().toLocaleTimeString()} - Ingested "${t.topic}" into campaign queue`
+        ]
+      };
+      item.article = buildCompleteArticle(item);
 
-    setRecipes([...newItems, ...recipes]);
+      // Cache item on backend
+      fetch('/api/store-recipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipe: item }),
+      }).catch(() => {});
+
+      return item;
+    });
+
+    setRecipes((prev) => [...newItems, ...prev]);
     setSelectedRecipeId(newItems[0].id);
   };
 
@@ -272,17 +304,10 @@ export default function App() {
     setRecipes(recipes.map((r) => (r.id === updated.id ? updated : r)));
   };
 
-  // 9. Sync Single Recipe to WordPress AutoSync Plugin
+  // 9. Sync Single Recipe to WordPress
   const handlePublishToWp = async (recipeId: string): Promise<boolean> => {
     const targetRecipe = recipes.find((r) => r.id === recipeId);
     if (!targetRecipe) return false;
-
-    if (!wpConfig.syncApiKey) {
-      setActiveTab('wordpress');
-      throw new Error(
-        'Please enter your AutoSync API Secret Key first! Copy it from: https://foodsprepared.wasmer.app/wp-admin/admin.php?page=autosync-settings'
-      );
-    }
 
     const res = await fetch('/api/sync-wordpress-plugin', {
       method: 'POST',
@@ -290,6 +315,9 @@ export default function App() {
       body: JSON.stringify({
         url: wpConfig.url,
         apiKey: wpConfig.syncApiKey,
+        bridgeToken: wpConfig.bridgeToken,
+        username: wpConfig.username,
+        appPassword: wpConfig.appPassword,
         defaultStatus: wpConfig.defaultStatus,
         articles: [targetRecipe],
       }),
@@ -297,12 +325,12 @@ export default function App() {
 
     const resData = await res.json();
     if (!res.ok) {
-      throw new Error(resData.error || 'Failed to sync with WordPress AutoSync plugin');
+      throw new Error(resData.error || 'Failed to sync with WordPress');
     }
 
     const permalink =
       resData.results?.[0]?.permalink ||
-      `${wpConfig.url.replace(/\/$/, '')}/${targetRecipe.slug}`;
+      `/api/article/${targetRecipe.id}`;
 
     setRecipes((prev) =>
       prev.map((r) => {
@@ -314,7 +342,7 @@ export default function App() {
             healthScore: 100,
             logEntries: [
               ...r.logEntries,
-              `${new Date().toLocaleTimeString()} - Synced to foodsprepared.wasmer.app via AutoSync Plugin. Permlink: ${permalink}`,
+              `${new Date().toLocaleTimeString()} - Synced to WordPress (${resData.mode || 'published'}). Permalink: ${permalink}`,
             ],
           };
         }
@@ -324,16 +352,9 @@ export default function App() {
     return true;
   };
 
-  // 10. Sync All Queued Recipes to WordPress AutoSync Plugin
+  // 10. Sync All Queued Recipes to WordPress
   const [isSyncingAllWp, setIsSyncingAllWp] = useState(false);
   const handleSyncAllToWp = async () => {
-    if (!wpConfig.syncApiKey) {
-      setActiveTab('wordpress');
-      throw new Error(
-        'Please enter your AutoSync API Secret Key in the WordPress tab first! Get it from https://foodsprepared.wasmer.app/wp-admin/admin.php?page=autosync-settings'
-      );
-    }
-
     setIsSyncingAllWp(true);
     try {
       const res = await fetch('/api/sync-wordpress-plugin', {
@@ -342,6 +363,9 @@ export default function App() {
         body: JSON.stringify({
           url: wpConfig.url,
           apiKey: wpConfig.syncApiKey,
+          bridgeToken: wpConfig.bridgeToken,
+          username: wpConfig.username,
+          appPassword: wpConfig.appPassword,
           defaultStatus: wpConfig.defaultStatus,
           articles: recipes,
         }),
@@ -349,15 +373,15 @@ export default function App() {
 
       const resData = await res.json();
       if (!res.ok) {
-        throw new Error(resData.error || 'Failed to sync with WordPress AutoSync plugin');
+        throw new Error(resData.error || 'Failed to sync with WordPress');
       }
 
       const results = resData.results || [];
       setRecipes((prev) =>
         prev.map((r, idx) => {
-          const itemResult = results[idx] || results.find((resItem: any) => resItem?.post_id);
+          const itemResult = results[idx] || results.find((resItem: any) => resItem?.post_id === r.id);
           const permalink =
-            itemResult?.permalink || `${wpConfig.url.replace(/\/$/, '')}/${r.slug}`;
+            itemResult?.permalink || `/api/article/${r.id}`;
           return {
             ...r,
             wpStatus: 'published',
@@ -365,7 +389,7 @@ export default function App() {
             healthScore: 100,
             logEntries: [
               ...r.logEntries,
-              `${new Date().toLocaleTimeString()} - AutoSync plugin published to foodsprepared.wasmer.app (${permalink})`,
+              `${new Date().toLocaleTimeString()} - Published article (${permalink})`,
             ],
           };
         })
@@ -407,6 +431,7 @@ export default function App() {
             <QueueTableView
               recipes={recipes}
               onSelectRecipe={(r) => setInspectRecipe(r)}
+              onOpenArticle={(r) => setArticleModalRecipe(r)}
               onDeleteRecipe={handleDeleteRecipe}
               onDeleteMultipleRecipes={handleDeleteMultipleRecipes}
               onRetryRecipe={handleRetryRecipe}
@@ -438,6 +463,7 @@ export default function App() {
               <QueueTableView
                 recipes={recipes}
                 onSelectRecipe={(r) => setInspectRecipe(r)}
+                onOpenArticle={(r) => setArticleModalRecipe(r)}
                 onDeleteRecipe={handleDeleteRecipe}
                 onDeleteMultipleRecipes={handleDeleteMultipleRecipes}
                 onRetryRecipe={handleRetryRecipe}
@@ -455,6 +481,7 @@ export default function App() {
               onUpdateRecipe={handleUpdateRecipe}
               onSynthesizeNew={handleSynthesizeSingle}
               isSynthesizing={isSynthesizingSingle}
+              onOpenArticleModal={(r) => setArticleModalRecipe(r)}
             />
           </div>
         )}
@@ -479,6 +506,7 @@ export default function App() {
               onPublishRecipeToWp={handlePublishToWp}
               onSyncAllToWp={handleSyncAllToWp}
               isSyncing={isSyncingAllWp}
+              onOpenArticleModal={(r) => setArticleModalRecipe(r)}
             />
           </div>
         )}
@@ -508,6 +536,7 @@ export default function App() {
       <RecipeDetailModal
         recipe={inspectRecipe}
         onClose={() => setInspectRecipe(null)}
+        onOpenArticleModal={(r) => setArticleModalRecipe(r)}
       />
 
       {/* Ingest Topics Modal */}
@@ -515,6 +544,15 @@ export default function App() {
         isOpen={isIngestModalOpen}
         onClose={() => setIsIngestModalOpen(false)}
         onIngestTopics={handleIngestTopics}
+        onSynthesizeAndInspect={handleSynthesizeSingle}
+      />
+
+      {/* Article Reader Modal */}
+      <ArticleReaderModal
+        recipe={articleModalRecipe}
+        isOpen={!!articleModalRecipe}
+        onClose={() => setArticleModalRecipe(null)}
+        onSyncToWp={handlePublishToWp}
       />
 
       {/* Footer */}

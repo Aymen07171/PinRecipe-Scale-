@@ -12,21 +12,32 @@ import {
   Share2, 
   FileText,
   Bookmark,
-  Download
+  Download,
+  BookOpen,
+  Sparkles,
+  CheckCircle2,
+  ChefHat,
+  Star,
+  Printer
 } from 'lucide-react';
+
+import { openPrintRecipeWindow } from '../utils/pdfGenerator';
+import { buildCompleteArticle } from '../utils/articleGenerator';
 
 interface RecipeDetailModalProps {
   recipe: RecipeItem | null;
   onClose: () => void;
+  onOpenArticleModal?: (recipe: RecipeItem) => void;
 }
 
 export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
   recipe,
   onClose,
+  onOpenArticleModal,
 }) => {
   if (!recipe) return null;
 
-  const [activeTab, setActiveTab] = useState<'recipe' | 'pin' | 'wordpress' | 'schema'>('recipe');
+  const [activeTab, setActiveTab] = useState<'recipe' | 'article' | 'pin' | 'wordpress' | 'schema'>('recipe');
   const [copiedSchema, setCopiedSchema] = useState(false);
 
   const handleCopySchema = () => {
@@ -38,64 +49,7 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
   };
 
   const handleDownloadPdf = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${recipe.title} - Recipe PDF</title>
-          <style>
-            body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; color: #1e293b; line-height: 1.6; }
-            h1 { font-size: 24px; color: #0f172a; margin-bottom: 8px; }
-            .meta { font-size: 14px; color: #64748b; margin-bottom: 24px; }
-            .badge { display: inline-block; background: #fce7f3; color: #db2777; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
-            img { max-width: 100%; height: auto; border-radius: 12px; margin: 16px 0; max-height: 350px; object-fit: cover; }
-            .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center; }
-            .grid div { font-size: 13px; }
-            .grid strong { display: block; font-size: 16px; color: #0f172a; }
-            h3 { font-size: 18px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin-top: 24px; }
-            ul, ol { padding-left: 20px; }
-            li { margin-bottom: 8px; }
-            .footer { margin-top: 40px; font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }
-          </style>
-        </head>
-        <body>
-          <div class="badge">${recipe.niche} · ${recipe.dietary}</div>
-          <h1>${recipe.title}</h1>
-          <div class="meta">${recipe.metaDescription}</div>
-          ${recipe.imageUrl ? `<img src="${recipe.imageUrl}" alt="${recipe.title}" />` : ''}
-          <div class="grid">
-            <div>Prep Time<strong>${recipe.prepTime}</strong></div>
-            <div>Cook Time<strong>${recipe.cookTime}</strong></div>
-            <div>Yield<strong>${recipe.servings}</strong></div>
-            <div>Calories<strong>${recipe.calories} kcal</strong></div>
-          </div>
-          <h3>Ingredients</h3>
-          <ul>
-            ${recipe.ingredients.map(i => `<li><strong>${i.amount}</strong> ${i.item} ${i.notes ? '(' + i.notes + ')' : ''}</li>`).join('')}
-          </ul>
-          <h3>Instructions</h3>
-          <ol>
-            ${recipe.instructions.map(s => `<li><strong>${s.title}:</strong> ${s.text}</li>`).join('')}
-          </ol>
-          ${recipe.chefTips && recipe.chefTips.length > 0 ? `
-            <h3>Chef's Pro Tips</h3>
-            <ul>
-              ${recipe.chefTips.map(t => `<li>${t}</li>`).join('')}
-            </ul>
-          ` : ''}
-          <div class="footer">
-            Generated with PinRecipe Scale Engine (Tool AYMAN) · <a href="${recipe.wpPostUrl || '#'}" target="_blank">View Online Recipe</a>
-          </div>
-          <script>
-            window.onload = () => { window.print(); };
-          </script>
-        </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
+    openPrintRecipeWindow(recipe);
   };
 
   return (
@@ -138,6 +92,15 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
             }`}
           >
             Culinary Guide & Nutrition
+          </button>
+          <button
+            onClick={() => setActiveTab('article')}
+            className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap flex items-center gap-1.5 ${
+              activeTab === 'article' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5 text-pink-400" />
+            <span>📖 Full Magazine Article</span>
           </button>
           <button
             onClick={() => setActiveTab('pin')}
@@ -239,6 +202,284 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
               </div>
             </div>
           )}
+
+          {activeTab === 'article' && (() => {
+            const article = recipe.article || buildCompleteArticle(recipe);
+            return (
+              <div className="space-y-6">
+                {/* Top Quick Actions Bar */}
+                <div className="flex items-center justify-between bg-slate-900/60 p-4 rounded-xl border border-slate-800 flex-wrap gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-300 font-medium">Magazine Article View:</span>
+                    <span className="text-xs text-pink-400 font-semibold">{recipe.title}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleDownloadPdf}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-700 hover:bg-pink-800 text-white text-xs font-bold shadow-sm transition-colors"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Download Recipe PDF</span>
+                    </button>
+                    {onOpenArticleModal && (
+                      <button
+                        onClick={() => onOpenArticleModal(recipe)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors"
+                      >
+                        <BookOpen className="w-3.5 h-3.5 text-pink-400" />
+                        <span>Open in Reader Modal</span>
+                      </button>
+                    )}
+                    <a
+                      href={`/api/article/${recipe.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium border border-slate-700 transition-colors"
+                    >
+                      <Globe className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Open Standalone Web URL</span>
+                    </a>
+                  </div>
+                </div>
+
+                {/* Clean White Magazine Article Content */}
+                <div className="bg-white text-slate-700 rounded-2xl border border-slate-200 shadow-xl p-6 sm:p-10 space-y-8">
+                  {/* Header & Badges */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="bg-pink-50 text-pink-700 border border-pink-200 text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        {recipe.niche}
+                      </span>
+                      <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs px-2.5 py-0.5 rounded-full font-bold">
+                        {recipe.dietary}
+                      </span>
+                      <span className="text-xs text-slate-500 ml-auto flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" /> {article.readingTimeMinutes} min read · Updated Today
+                      </span>
+                    </div>
+
+                    <h1 className="text-2xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight font-serif">
+                      {article.title}
+                    </h1>
+
+                    <p className="mt-3 text-base sm:text-lg text-slate-600 italic leading-relaxed border-l-4 border-pink-600 pl-4 py-1">
+                      {article.excerpt}
+                    </p>
+
+                    {/* Top Action Bar with Download Button */}
+                    <div className="mt-5 flex items-center gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex-wrap">
+                      <button
+                        onClick={handleDownloadPdf}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-pink-700 hover:bg-pink-800 text-white rounded-lg text-xs sm:text-sm font-bold shadow-sm transition-all"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Download / Print Recipe PDF</span>
+                      </button>
+                      <a
+                        href="#inspect-recipe-card"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs sm:text-sm font-semibold transition-colors"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Jump to Recipe Card</span>
+                      </a>
+                      <div className="ml-auto flex items-center gap-1 text-xs text-amber-600 font-bold">
+                        <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                        <span>4.98 (124 ratings)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Metrics */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Prep Time</span>
+                      <strong className="text-base text-slate-900 font-semibold">{recipe.prepTime}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Cook Time</span>
+                      <strong className="text-base text-slate-900 font-semibold">{recipe.cookTime}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Servings</span>
+                      <strong className="text-base text-slate-900 font-semibold">{recipe.servings}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Calories</span>
+                      <strong className="text-base text-pink-700 font-semibold">{recipe.calories} kcal</strong>
+                    </div>
+                  </div>
+
+                  {/* Hero Image */}
+                  <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-md">
+                    <img
+                      src={article.featuredImageUrl || recipe.imageUrl}
+                      alt={article.title}
+                      className="w-full max-h-[440px] object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="p-3 bg-slate-50 border-t border-slate-200 text-xs text-slate-500 italic text-center">
+                      Freshly prepared {recipe.title} with natural ingredients, cold-pressed olive oil, and herbs.
+                    </div>
+                  </div>
+
+                  {/* Introduction Story */}
+                  <div className="space-y-4 text-base sm:text-[17px] text-slate-700 leading-relaxed font-sans">
+                    {article.introduction.split('\n\n').map((paragraph, idx) => (
+                      <p key={idx} className="leading-relaxed">{paragraph}</p>
+                    ))}
+                  </div>
+
+                  {/* Why You'll Love This Recipe */}
+                  <div className="bg-purple-50/60 border border-purple-100 rounded-xl p-5 sm:p-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sparkles className="w-5 h-5 text-purple-700" />
+                      <h3 className="text-base sm:text-lg font-bold text-purple-950">
+                        Why This Recipe Belongs in Your Kitchen
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {article.whyYouWillLoveThis.map((point, idx) => (
+                        <div key={idx} className="flex items-start gap-2.5 text-xs sm:text-sm text-purple-900">
+                          <CheckCircle2 className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+                          <span>{point}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Categorized Ingredients */}
+                  <div className="space-y-4">
+                    <h3 className="text-xl font-bold text-slate-900 border-b border-slate-200 pb-2 font-serif">
+                      🛒 Ingredients & Selection Guide
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {recipe.ingredients.map((ing, i) => (
+                        <div key={i} className="flex justify-between items-center p-3 rounded-lg bg-slate-50 border border-slate-200 text-sm">
+                          <span className="text-slate-800 font-medium">{ing.item}</span>
+                          <span className="font-semibold text-pink-700 shrink-0 pl-2">{ing.amount}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Culinary Masterclass */}
+                  <div className="space-y-4">
+                    <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2 border-b border-slate-200 pb-2 font-serif">
+                      <ChefHat className="w-5 h-5 text-pink-600" />
+                      <span>Step-by-Step Culinary Masterclass</span>
+                    </h3>
+                    <div className="space-y-4">
+                      {article.stepByStepWalkthrough.map((step, idx) => (
+                        <div key={idx} className="bg-white border border-slate-200 rounded-xl p-5 space-y-2 shadow-xs">
+                          <h4 className="text-base font-bold text-slate-900 flex items-center gap-2.5">
+                            <span className="w-6 h-6 rounded-full bg-pink-100 text-pink-700 text-xs font-bold flex items-center justify-center border border-pink-200">
+                              {idx + 1}
+                            </span>
+                            <span>{step.heading}</span>
+                          </h4>
+                          <p className="text-sm text-slate-600 leading-relaxed pl-8">
+                            {step.description}
+                          </p>
+                          {step.proTip && (
+                            <div className="ml-8 mt-2 text-xs bg-amber-50 border border-amber-200 text-amber-800 p-2.5 rounded-lg flex items-center gap-2">
+                              <span className="font-bold text-amber-900">💡 Pro Tip:</span>
+                              <span>{step.proTip}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Pro Chef Secrets */}
+                  <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-5 space-y-2.5">
+                    <h3 className="text-base font-bold text-emerald-950 flex items-center gap-2">
+                      <span>💡 Chef Secrets for Success</span>
+                    </h3>
+                    <ul className="space-y-2 text-xs sm:text-sm text-emerald-900 list-disc pl-5">
+                      {article.culinarySecrets.map((secret, i) => (
+                        <li key={i}>{secret}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Printable Recipe Card */}
+                  <div id="inspect-recipe-card" className="bg-white border-2 border-slate-300 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-4">
+                      <div>
+                        <span className="text-[11px] font-bold text-pink-700 uppercase tracking-widest">
+                          Official Recipe Card
+                        </span>
+                        <h3 className="text-xl sm:text-2xl font-bold text-slate-900 font-serif">{recipe.title}</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">{recipe.metaDescription}</p>
+                      </div>
+                      <button
+                        onClick={handleDownloadPdf}
+                        className="px-3.5 py-2 rounded-lg bg-pink-700 hover:bg-pink-800 text-white text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Save / Print PDF</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                      <div>
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-3 border-b border-slate-200 pb-1">
+                          Ingredients ({recipe.ingredients.length})
+                        </h4>
+                        <ul className="space-y-2 text-xs sm:text-sm">
+                          {recipe.ingredients.map((ing, i) => (
+                            <li key={i} className="flex justify-between p-2 rounded bg-slate-50 border border-slate-200">
+                              <span className="text-slate-800">{ing.item}</span>
+                              <span className="font-semibold text-pink-700">{ing.amount}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-3 border-b border-slate-200 pb-1">
+                          Method ({recipe.instructions.length} Steps)
+                        </h4>
+                        <ol className="space-y-2.5 text-xs sm:text-sm">
+                          {recipe.instructions.map((step, i) => (
+                            <li key={i} className="p-2.5 rounded bg-slate-50 border border-slate-200 space-y-1">
+                              <div className="flex justify-between items-center">
+                                <strong className="text-slate-900">{step.title}</strong>
+                                {step.timerMinutes && (
+                                  <span className="text-[11px] text-pink-700 font-mono">⏱️ {step.timerMinutes}m</span>
+                                )}
+                              </div>
+                              <p className="text-slate-600">{step.text}</p>
+                            </li>
+                          ))}
+                        </ol>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* FAQ */}
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-bold text-slate-900 font-serif">Frequently Asked Culinary Questions</h3>
+                    <div className="space-y-2.5">
+                      {article.frequentlyAskedQuestions.map((faq, i) => (
+                        <div key={i} className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-1.5">
+                          <strong className="text-slate-900 block text-sm font-semibold">{faq.question}</strong>
+                          <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">{faq.answer}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Storage & Pairings */}
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs sm:text-sm space-y-2 text-slate-600">
+                    <p><strong className="text-slate-900">🧊 Storage & Meal Prep:</strong> {article.storageAndReheating}</p>
+                    <p><strong className="text-slate-900">🍷 Serving & Pairings:</strong> {article.servingSuggestions}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {activeTab === 'pin' && (
             <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">

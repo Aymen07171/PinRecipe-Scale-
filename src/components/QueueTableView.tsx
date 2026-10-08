@@ -13,12 +13,15 @@ import {
   Download,
   Share2,
   Eye,
-  SlidersHorizontal
+  SlidersHorizontal,
+  BookOpen
 } from 'lucide-react';
+import { openPrintRecipeWindow } from '../utils/pdfGenerator';
 
 interface QueueTableViewProps {
   recipes: RecipeItem[];
   onSelectRecipe: (recipe: RecipeItem) => void;
+  onOpenArticle?: (recipe: RecipeItem) => void;
   onDeleteRecipe: (id: string) => void;
   onDeleteMultipleRecipes?: (ids: string[]) => void;
   onRetryRecipe: (id: string) => void;
@@ -29,6 +32,7 @@ interface QueueTableViewProps {
 export const QueueTableView: React.FC<QueueTableViewProps> = ({
   recipes,
   onSelectRecipe,
+  onOpenArticle,
   onDeleteRecipe,
   onDeleteMultipleRecipes,
   onRetryRecipe,
@@ -217,7 +221,15 @@ export const QueueTableView: React.FC<QueueTableViewProps> = ({
 
                     {/* Title & Keyword */}
                     <td className="py-3 px-4 max-w-xs">
-                    <div className="font-semibold text-white truncate group-hover:text-pink-300 transition-colors">
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onOpenArticle) onOpenArticle(recipe);
+                        else onSelectRecipe(recipe);
+                      }}
+                      className="font-semibold text-white truncate hover:text-pink-300 transition-colors cursor-pointer hover:underline"
+                      title="Click to open and read full article"
+                    >
                       {recipe.title}
                     </div>
                     <div className="text-[11px] text-slate-500 truncate mt-0.5 flex items-center gap-1.5 font-mono">
@@ -297,18 +309,42 @@ export const QueueTableView: React.FC<QueueTableViewProps> = ({
                     className="py-3 px-4 text-right whitespace-nowrap"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="flex items-center justify-end gap-1">
-                      {recipe.wpPostUrl && (
-                        <a
-                          href={recipe.wpPostUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded transition-colors"
-                          title="View live post on WordPress"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
+                    <div className="flex items-center justify-end gap-1.5">
+                      {/* Prominent Read Article Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onOpenArticle) onOpenArticle(recipe);
+                          else window.open(`/api/article/${recipe.id}`, '_blank');
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink-600 hover:bg-pink-500 text-white text-xs font-bold border border-pink-500 shadow-sm hover:shadow-pink-500/20 transition-all"
+                        title="Open and read full recipe article"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>Read Article</span>
+                      </button>
+
+                      {/* Standalone Web Tab Link */}
+                      <a
+                        href={
+                          recipe.wpPostUrl && !recipe.wpPostUrl.includes('wasmer.app')
+                            ? recipe.wpPostUrl
+                            : `/api/article/${recipe.id}`
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-800 rounded transition-colors"
+                        title="Open live web article in new tab"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                      <button
+                        onClick={() => openPrintRecipeWindow(recipe)}
+                        className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded transition-colors"
+                        title="Print luxury recipe PDF card"
+                      >
+                        <Download className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => onSelectRecipe(recipe)}
                         className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition-colors"

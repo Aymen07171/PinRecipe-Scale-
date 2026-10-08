@@ -1,10 +1,93 @@
 import { RecipeItem, WordPressConfig, PinterestConfig } from '../types/pipeline';
+import { buildCompleteArticle } from '../utils/articleGenerator';
 import trufflePastaImg from '../assets/images/recipe_truffle_pasta_1791456194437.jpg';
 import salmonBowlImg from '../assets/images/recipe_salmon_bowl_1791456206016.jpg';
 import berryCheesecakeImg from '../assets/images/recipe_berry_cheesecake_1791456217003.jpg';
 import moroccanTagineImg from '../assets/images/recipe_moroccan_tagine_1791456228215.jpg';
 
-export const INITIAL_RECIPES: RecipeItem[] = [
+const RAW_INITIAL_RECIPES: RecipeItem[] = [
+  {
+    id: 'rec-00',
+    topic: 'Sheet Pan Lemon Herb Mediterranean Salmon',
+    title: 'Sheet Pan Lemon Herb Mediterranean Salmon',
+    slug: 'sheet-pan-lemon-herb-mediterranean-salmon',
+    niche: 'Mediterranean Diet',
+    dietary: 'Pescatarian',
+    status: 'completed',
+    currentStepIndex: 4,
+    progress: 100,
+    imageUrl: '/images/mediterranean_salmon.jpg',
+    macroPhotoPrompt: 'Authentic editorial food photography of Mediterranean Lemon Herb Pan-Seared Salmon on rustic ceramic plate with fresh dill, lemon wedges, capers, and kalamata olives.',
+    prepTime: '15 mins',
+    cookTime: '20 mins',
+    totalTime: '35 mins',
+    servings: '4 servings',
+    calories: 460,
+    difficulty: 'Easy',
+    macros: {
+      protein: '36g',
+      carbs: '14g',
+      fat: '28g',
+      fiber: '4g'
+    },
+    ingredients: [
+      { item: 'Fresh Wild Salmon Fillets', amount: '4 portions (180g each)', notes: 'skin on, patted dry' },
+      { item: 'Extra Virgin Cold-Pressed Olive Oil', amount: '3 tbsp', notes: 'Greek or Sicilian preferred' },
+      { item: 'Fresh Lemon Juice & Zest', amount: '2 lemons', notes: 'juiced & sliced' },
+      { item: 'Garlic Cloves', amount: '4 cloves', notes: 'finely minced' },
+      { item: 'Fresh Chopped Dill & Oregano', amount: '3 tbsp', notes: 'finely chopped' },
+      { item: 'Kalamata Olives & Non-Pareil Capers', amount: '1/2 cup', notes: 'drained' },
+      { item: 'Crumbled Greek Sheep Milk Feta', amount: '60g', notes: 'for finishing' },
+      { item: 'Flaky Maldon Sea Salt & Coarse Black Pepper', amount: 'to taste' }
+    ],
+    instructions: [
+      { step: 1, title: 'Prep Aromatics & Dry the Fillets', text: 'Preheat oven or skillet. Pat salmon fillets completely dry with paper towels to ensure golden searing. Season all sides with sea salt, cracked black pepper, and garlic.', timerMinutes: 5 },
+      { step: 2, title: 'High-Heat Sear for Crispy Skin', text: 'Heat olive oil in a heavy skillet over medium-high heat. Place salmon skin-side down and sear undisturbed for 5 minutes until crispy and caramelized.', timerMinutes: 5 },
+      { step: 3, title: 'Deglaze & Simmer with Lemon Herbs', text: 'Scatter minced garlic, fresh dill, olives, and capers around the salmon. Pour in fresh lemon juice and a splash of broth to deglaze the skillet juices.', timerMinutes: 4 },
+      { step: 4, title: 'Baste into Velvety Pan Emulsion', text: 'Swirl the pan gently and spoon the fragrant lemon pan sauce continuously over the salmon until perfectly basted and flaky.', timerMinutes: 3 },
+      { step: 5, title: 'Finish & Rest', text: 'Transfer to a serving platter. Garnish with crumbled feta, lemon wedges, and fresh herbs. Rest for 3 minutes before serving.' }
+    ],
+    chefTips: [
+      'Pasting fillets completely dry is the #1 secret to restaurant-crisp skin without sticking.',
+      'Swirl in a knob of cold butter or extra olive oil off the heat for an authentic velvety pan glaze.'
+    ],
+    metaDescription: 'Restaurant-quality Sheet Pan Lemon Herb Mediterranean Salmon ready in 35 minutes. Flaky salmon with garlic, olives, capers, and crumbled feta.',
+    focusKeyword: 'mediterranean lemon herb salmon recipe',
+    schemaJsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'Recipe',
+      name: 'Sheet Pan Lemon Herb Mediterranean Salmon',
+      description: 'Pan-seared Mediterranean salmon with fresh lemon, capers, olives, and herbs.',
+      prepTime: 'PT15M',
+      cookTime: 'PT20M',
+      totalTime: 'PT35M',
+      recipeYield: '4 servings',
+      recipeCategory: 'Mediterranean Diet',
+      recipeCuisine: 'Mediterranean'
+    },
+    pinterestPin: {
+      title: '35-Minute Mediterranean Lemon Herb Salmon (So Juicy!)',
+      description: 'The easiest, most flavorful Mediterranean salmon dinner! Pan-seared with crispy skin, fresh lemon, olives, and garlic herbs. Save for healthy dinner goals!',
+      hashtags: ['#salmonrecipe', '#mediterraneandiet', '#healthyrecipes', '#dinnerideas'],
+      overlayHeadline: '35-Min Mediterranean Salmon',
+      board: 'Quick & Easy Dinners',
+      scheduledTime: 'Today at 7:00 PM',
+      status: 'scheduled'
+    },
+    wpStatus: 'published',
+    wpPostUrl: '/api/article/rec-00',
+    wpCategory: 'Mediterranean Diet',
+    createdAt: '2026-10-08T01:00:00Z',
+    completedAt: '2026-10-08T01:02:15Z',
+    healthScore: 100,
+    logEntries: [
+      '12:00:01 - Ingested niche keyword "mediterranean lemon herb salmon recipe"',
+      '12:00:15 - AI generated structured nutrition, ingredients, and schema.org JSON-LD',
+      '12:00:30 - Generated authentic Gemini food photography asset with natural lighting',
+      '12:00:55 - Formatted full editorial magazine article with clean white styling',
+      '12:01:10 - Published and linked with instant reader and download PDF support'
+    ]
+  },
   {
     id: 'rec-01',
     topic: 'Creamy Wild Mushroom & Black Truffle Tagliatelle',
@@ -74,7 +157,7 @@ export const INITIAL_RECIPES: RecipeItem[] = [
       status: 'scheduled'
     },
     wpStatus: 'published',
-    wpPostUrl: 'https://foodsprepared.wasmer.app/creamy-wild-mushroom-black-truffle-tagliatelle',
+    wpPostUrl: '/api/article/rec-01',
     wpCategory: 'Quick & Easy Dinners',
     createdAt: '2026-10-08T02:15:00Z',
     completedAt: '2026-10-08T02:16:30Z',
@@ -155,7 +238,7 @@ export const INITIAL_RECIPES: RecipeItem[] = [
       status: 'scheduled'
     },
     wpStatus: 'published',
-    wpPostUrl: 'https://foodsprepared.wasmer.app/glazed-teriyaki-salmon-avocado-power-bowl',
+    wpPostUrl: '/api/article/rec-02',
     wpCategory: 'High-Protein & Keto',
     createdAt: '2026-10-08T02:40:00Z',
     completedAt: '2026-10-08T02:41:15Z',
@@ -237,7 +320,7 @@ export const INITIAL_RECIPES: RecipeItem[] = [
       status: 'scheduled'
     },
     wpStatus: 'published',
-    wpPostUrl: 'https://foodsprepared.wasmer.app/artisanal-moroccan-lemon-olive-chicken-tagine',
+    wpPostUrl: '/api/article/rec-03',
     wpCategory: 'Moroccan & Tagine Classics',
     createdAt: '2026-10-08T03:00:00Z',
     completedAt: '2026-10-08T03:01:20Z',
@@ -319,7 +402,7 @@ export const INITIAL_RECIPES: RecipeItem[] = [
       status: 'scheduled'
     },
     wpStatus: 'published',
-    wpPostUrl: 'https://foodsprepared.wasmer.app/velvety-new-york-berry-swirl-cheesecake',
+    wpPostUrl: '/api/article/rec-04',
     wpCategory: 'Decadent Desserts',
     createdAt: '2026-10-08T03:15:00Z',
     completedAt: '2026-10-08T03:16:45Z',
@@ -333,6 +416,11 @@ export const INITIAL_RECIPES: RecipeItem[] = [
     ]
   }
 ];
+
+export const INITIAL_RECIPES: RecipeItem[] = RAW_INITIAL_RECIPES.map(r => ({
+  ...r,
+  article: buildCompleteArticle(r),
+}));
 
 export const NICHE_PRESETS = [
   {
@@ -364,9 +452,10 @@ export const NICHE_PRESETS = [
 
 export const DEFAULT_WP_CONFIG: WordPressConfig = {
   url: 'https://foodsprepared.wasmer.app',
-  username: 'admin',
+  username: 'elattarayman1',
   appPassword: '',
   syncApiKey: '',
+  bridgeToken: '',
   useAutoSyncPlugin: true,
   defaultStatus: 'publish',
   isConnected: true,

@@ -11,7 +11,8 @@ import {
   Globe, 
   Share2, 
   FileText,
-  Bookmark
+  Bookmark,
+  Download
 } from 'lucide-react';
 
 interface RecipeDetailModalProps {
@@ -36,6 +37,67 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
     }
   };
 
+  const handleDownloadPdf = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${recipe.title} - Recipe PDF</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; color: #1e293b; line-height: 1.6; }
+            h1 { font-size: 24px; color: #0f172a; margin-bottom: 8px; }
+            .meta { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+            .badge { display: inline-block; background: #fce7f3; color: #db2777; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+            img { max-width: 100%; height: auto; border-radius: 12px; margin: 16px 0; max-height: 350px; object-fit: cover; }
+            .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center; }
+            .grid div { font-size: 13px; }
+            .grid strong { display: block; font-size: 16px; color: #0f172a; }
+            h3 { font-size: 18px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin-top: 24px; }
+            ul, ol { padding-left: 20px; }
+            li { margin-bottom: 8px; }
+            .footer { margin-top: 40px; font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+          </style>
+        </head>
+        <body>
+          <div class="badge">${recipe.niche} · ${recipe.dietary}</div>
+          <h1>${recipe.title}</h1>
+          <div class="meta">${recipe.metaDescription}</div>
+          ${recipe.imageUrl ? `<img src="${recipe.imageUrl}" alt="${recipe.title}" />` : ''}
+          <div class="grid">
+            <div>Prep Time<strong>${recipe.prepTime}</strong></div>
+            <div>Cook Time<strong>${recipe.cookTime}</strong></div>
+            <div>Yield<strong>${recipe.servings}</strong></div>
+            <div>Calories<strong>${recipe.calories} kcal</strong></div>
+          </div>
+          <h3>Ingredients</h3>
+          <ul>
+            ${recipe.ingredients.map(i => `<li><strong>${i.amount}</strong> ${i.item} ${i.notes ? '(' + i.notes + ')' : ''}</li>`).join('')}
+          </ul>
+          <h3>Instructions</h3>
+          <ol>
+            ${recipe.instructions.map(s => `<li><strong>${s.title}:</strong> ${s.text}</li>`).join('')}
+          </ol>
+          ${recipe.chefTips && recipe.chefTips.length > 0 ? `
+            <h3>Chef's Pro Tips</h3>
+            <ul>
+              ${recipe.chefTips.map(t => `<li>${t}</li>`).join('')}
+            </ul>
+          ` : ''}
+          <div class="footer">
+            Generated with PinRecipe Scale Engine (Tool AYMAN) · <a href="${recipe.wpPostUrl || '#'}" target="_blank">View Online Recipe</a>
+          </div>
+          <script>
+            window.onload = () => { window.print(); };
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-[#0f172a] border border-slate-800 rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
@@ -49,12 +111,22 @@ export const RecipeDetailModal: React.FC<RecipeDetailModalProps> = ({
               {recipe.title}
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white text-xs font-semibold shadow transition-all"
+              title="Download recipe as a printable PDF"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Download PDF</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Modal Navigation Tabs */}

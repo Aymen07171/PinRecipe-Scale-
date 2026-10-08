@@ -48,7 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Scale v4.0
               </span>
               <span className="hidden lg:inline text-xs text-slate-500 font-mono">
-                · AZZDINE 100%
+                · AYMAN 100%
               </span>
             </div>
           </div>

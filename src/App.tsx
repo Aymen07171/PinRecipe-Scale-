@@ -241,6 +241,11 @@ export default function App() {
     setRecipes(recipes.filter((r) => r.id !== id));
   };
 
+  // 6b. Delete Multiple Recipes in Bulk
+  const handleDeleteMultipleRecipes = (ids: string[]) => {
+    setRecipes(recipes.filter((r) => !ids.includes(r.id)));
+  };
+
   // 7. Retry Recipe
   const handleRetryRecipe = (id: string) => {
     setRecipes(
@@ -403,6 +408,7 @@ export default function App() {
               recipes={recipes}
               onSelectRecipe={(r) => setInspectRecipe(r)}
               onDeleteRecipe={handleDeleteRecipe}
+              onDeleteMultipleRecipes={handleDeleteMultipleRecipes}
               onRetryRecipe={handleRetryRecipe}
               onExportCsv={handleExportCsv}
               onQuickIngestPreset={handleQuickIngestPreset}
@@ -433,6 +439,7 @@ export default function App() {
                 recipes={recipes}
                 onSelectRecipe={(r) => setInspectRecipe(r)}
                 onDeleteRecipe={handleDeleteRecipe}
+                onDeleteMultipleRecipes={handleDeleteMultipleRecipes}
                 onRetryRecipe={handleRetryRecipe}
                 onExportCsv={handleExportCsv}
                 onQuickIngestPreset={handleQuickIngestPreset}
@@ -513,7 +520,7 @@ export default function App() {
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950 py-5 text-center text-xs text-slate-500 font-mono">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>PinRecipe Scale Engine [Scale v4.0] · Tool AZZDINE 100%</span>
+          <span>PinRecipe Scale Engine [Scale v4.0] · Tool AYMAN 100%</span>
           <span className="text-slate-600">
             Programmatic 5-in-1 Automated Recipe Pipeline & Pinterest Bulk Scheduler
           </span>

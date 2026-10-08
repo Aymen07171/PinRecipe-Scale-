@@ -13,7 +13,8 @@ import {
   Trash2,
   RefreshCw,
   Share2,
-  BookOpen
+  BookOpen,
+  Download
 } from 'lucide-react';
 
 interface AIRecipeStudioViewProps {
@@ -48,6 +49,67 @@ export const AIRecipeStudioView: React.FC<AIRecipeStudioViewProps> = ({
     if (!topicInput.trim()) return;
     await onSynthesizeNew(topicInput.trim(), nicheInput, dietaryInput);
     setTopicInput('');
+  };
+
+  const handleDownloadPdf = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${currentRecipe.title} - Recipe PDF</title>
+          <style>
+            body { font-family: system-ui, -apple-system, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; color: #1e293b; line-height: 1.6; }
+            h1 { font-size: 24px; color: #0f172a; margin-bottom: 8px; }
+            .meta { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+            .badge { display: inline-block; background: #fce7f3; color: #db2777; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+            img { max-width: 100%; height: auto; border-radius: 12px; margin: 16px 0; max-height: 350px; object-fit: cover; }
+            .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; background: #f8fafc; padding: 16px; border-radius: 8px; margin: 16px 0; text-align: center; }
+            .grid div { font-size: 13px; }
+            .grid strong { display: block; font-size: 16px; color: #0f172a; }
+            h3 { font-size: 18px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; margin-top: 24px; }
+            ul, ol { padding-left: 20px; }
+            li { margin-bottom: 8px; }
+            .footer { margin-top: 40px; font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 16px; }
+          </style>
+        </head>
+        <body>
+          <div class="badge">${currentRecipe.niche} · ${currentRecipe.dietary}</div>
+          <h1>${currentRecipe.title}</h1>
+          <div class="meta">${currentRecipe.metaDescription}</div>
+          ${currentRecipe.imageUrl ? `<img src="${currentRecipe.imageUrl}" alt="${currentRecipe.title}" />` : ''}
+          <div class="grid">
+            <div>Prep Time<strong>${currentRecipe.prepTime}</strong></div>
+            <div>Cook Time<strong>${currentRecipe.cookTime}</strong></div>
+            <div>Yield<strong>${currentRecipe.servings}</strong></div>
+            <div>Calories<strong>${currentRecipe.calories} kcal</strong></div>
+          </div>
+          <h3>Ingredients</h3>
+          <ul>
+            ${currentRecipe.ingredients.map(i => `<li><strong>${i.amount}</strong> ${i.item} ${i.notes ? '(' + i.notes + ')' : ''}</li>`).join('')}
+          </ul>
+          <h3>Instructions</h3>
+          <ol>
+            ${currentRecipe.instructions.map(s => `<li><strong>${s.title}:</strong> ${s.text}</li>`).join('')}
+          </ol>
+          ${currentRecipe.chefTips && currentRecipe.chefTips.length > 0 ? `
+            <h3>Chef's Pro Tips</h3>
+            <ul>
+              ${currentRecipe.chefTips.map(t => `<li>${t}</li>`).join('')}
+            </ul>
+          ` : ''}
+          <div class="footer">
+            Generated with PinRecipe Scale Engine (Tool AYMAN) · <a href="${currentRecipe.wpPostUrl || '#'}" target="_blank">View Online Recipe</a>
+          </div>
+          <script>
+            window.onload = () => { window.print(); };
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
   };
 
   return (
@@ -165,15 +227,25 @@ export const AIRecipeStudioView: React.FC<AIRecipeStudioViewProps> = ({
             </button>
           </div>
 
-          {activeSubTab === 'schema' && (
+          <div className="flex items-center gap-2">
+            {activeSubTab === 'schema' && (
+              <button
+                onClick={handleCopySchema}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-300 bg-slate-900 hover:bg-slate-800 rounded-md border border-slate-700 transition-colors"
+              >
+                {copiedSchema ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copiedSchema ? 'Copied!' : 'Copy JSON-LD'}</span>
+              </button>
+            )}
             <button
-              onClick={handleCopySchema}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-300 bg-slate-900 hover:bg-slate-800 rounded-md border border-slate-700 transition-colors"
+              onClick={handleDownloadPdf}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-gradient-to-r from-pink-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 rounded-lg shadow transition-all"
+              title="Download recipe as a printable PDF for visitors"
             >
-              {copiedSchema ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-              <span>{copiedSchema ? 'Copied!' : 'Copy JSON-LD'}</span>
+              <Download className="w-3.5 h-3.5" />
+              <span>Download PDF</span>
             </button>
-          )}
+          </div>
         </div>
 
         {/* Tab 1: Full Recipe Editor */}

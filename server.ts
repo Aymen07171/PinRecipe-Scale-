@@ -15,13 +15,15 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 
 const getGeminiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.CODECRAFT_API_KEY || process.env.GEMINI_API_KEY;
+  const baseUrl = process.env.CODECRAFT_API_URL || 'https://codecraftapi.com';
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY is not configured in the server environment.');
+    throw new Error('API key (GEMINI_API_KEY or CODECRAFT_API_KEY) is not configured in the server environment.');
   }
   return new GoogleGenAI({
     apiKey,
     httpOptions: {
+      baseUrl: baseUrl.replace(/\/$/, ''),
       headers: {
         'User-Agent': 'aistudio-build',
       },
@@ -277,9 +279,42 @@ app.post('/api/sync-wordpress-plugin', async (req, res) => {
     // Map recipes to Auto_Sync_API schema
     const formattedArticles = (articles || []).map((item: any) => {
       const featuredImg = resolveImageBase64(item.imageUrl || item.featured_image);
+      const htmlContent = item.content && item.content.length > 50 ? item.content : `
+        <p><strong>${item.metaDescription || `Delicious recipe guide for ${item.title}`}</strong></p>
+        ${featuredImg ? `<p><img src="${featuredImg}" alt="${item.title}" style="border-radius:12px; max-width:100%; height:auto;" /></p>` : ''}
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:24px; margin:24px 0; color:#1e293b;">
+          <h3 style="margin-top:0; color:#0f172a;">Quick Recipe Facts</h3>
+          <ul style="list-style-type:disc; padding-left:20px;">
+            <li><strong>Prep Time:</strong> ${item.prepTime || '15 mins'}</li>
+            <li><strong>Cook Time:</strong> ${item.cookTime || '20 mins'}</li>
+            <li><strong>Servings:</strong> ${item.servings || '4 servings'}</li>
+            <li><strong>Calories:</strong> ${item.calories || 450} kcal</li>
+          </ul>
+          <h4 style="color:#0f172a;">Ingredients</h4>
+          <ul style="list-style-type:disc; padding-left:20px;">
+            ${(item.ingredients || []).map((i: any) => `<li><strong>${i.amount || ''}</strong> ${i.item || i}</li>`).join('')}
+          </ul>
+          <h4 style="color:#0f172a;">Instructions</h4>
+          <ol style="padding-left:20px;">
+            ${(item.instructions || []).map((s: any) => `<li><strong>${s.title || ''}:</strong> ${s.text || s}</li>`).join('')}
+          </ol>
+          ${item.chefTips && item.chefTips.length > 0 ? `
+            <h4 style="color:#0f172a;">Chef's Pro Tips</h4>
+            <ul style="list-style-type:disc; padding-left:20px;">
+              ${item.chefTips.map((t: string) => `<li>${t}</li>`).join('')}
+            </ul>
+          ` : ''}
+          <p style="margin-top:24px;">
+            <a href="#" onclick="window.print(); return false;" style="background:#db2777; color:white; padding:12px 24px; border-radius:8px; text-decoration:none; font-weight:600; display:inline-block;">
+              📥 Download Recipe (PDF)
+            </a>
+          </p>
+        </div>
+      `;
+
       return {
         title: item.title,
-        content: item.content || `<p>${item.metaDescription || `Delicious recipe for ${item.title}`}</p>`,
+        content: htmlContent,
         external_id: item.id || `recipe-${Date.now()}`,
         status: item.status || defaultStatus || 'publish',
         slug: item.slug || item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-'),

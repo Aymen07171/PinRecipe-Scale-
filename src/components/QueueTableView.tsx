@@ -20,6 +20,7 @@ interface QueueTableViewProps {
   recipes: RecipeItem[];
   onSelectRecipe: (recipe: RecipeItem) => void;
   onDeleteRecipe: (id: string) => void;
+  onDeleteMultipleRecipes?: (ids: string[]) => void;
   onRetryRecipe: (id: string) => void;
   onExportCsv: () => void;
   onQuickIngestPreset: (nicheName: string) => void;
@@ -29,6 +30,7 @@ export const QueueTableView: React.FC<QueueTableViewProps> = ({
   recipes,
   onSelectRecipe,
   onDeleteRecipe,
+  onDeleteMultipleRecipes,
   onRetryRecipe,
   onExportCsv,
   onQuickIngestPreset,
@@ -36,6 +38,7 @@ export const QueueTableView: React.FC<QueueTableViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'queued' | 'processing'>('all');
   const [nicheFilter, setNicheFilter] = useState<string>('all');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const filteredRecipes = recipes.filter((rec) => {
     const matchesSearch =
@@ -58,6 +61,30 @@ export const QueueTableView: React.FC<QueueTableViewProps> = ({
   });
 
   const availableNiches = Array.from(new Set(recipes.map((r) => r.niche)));
+
+  const allFilteredSelected = filteredRecipes.length > 0 && filteredRecipes.every(r => selectedIds.includes(r.id));
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(filteredRecipes.map(r => r.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleToggleSelect = (id: string, e: React.MouseEvent | React.ChangeEvent) => {
+    e.stopPropagation();
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSelected = () => {
+    if (onDeleteMultipleRecipes && selectedIds.length > 0) {
+      onDeleteMultipleRecipes(selectedIds);
+      setSelectedIds([]);
+    }
+  };
 
   return (
     <div className="bg-[#0f172a]/80 border border-slate-800/80 rounded-xl overflow-hidden shadow-sm">
@@ -95,6 +122,17 @@ export const QueueTableView: React.FC<QueueTableViewProps> = ({
 
         {/* Niche Filter & Export */}
         <div className="flex items-center gap-2">
+          {selectedIds.length > 0 && (
+            <button
+              onClick={handleDeleteSelected}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/90 hover:bg-red-600 text-white text-xs font-semibold shadow transition-colors animate-in fade-in"
+              title="Delete selected recipes in bulk"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Selected ({selectedIds.length})</span>
+            </button>
+          )}
+
           {availableNiches.length > 0 && (
             <select
               value={nicheFilter}
@@ -126,6 +164,15 @@ export const QueueTableView: React.FC<QueueTableViewProps> = ({
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="border-b border-slate-800/80 bg-slate-900/40 text-[11px] font-semibold text-slate-400 tracking-wider uppercase">
+              <th className="py-3 px-3 w-10 text-center">
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={handleSelectAll}
+                  className="rounded border-slate-700 bg-slate-900 text-pink-600 focus:ring-pink-500 cursor-pointer"
+                  title="Select all recipes in view"
+                />
+              </th>
               <th className="py-3 px-4">Recipe Title & SEO Keyword</th>
               <th className="py-3 px-4">Niche & Dietary</th>
               <th className="py-3 px-4 text-center">Macro Visual</th>
@@ -139,7 +186,7 @@ export const QueueTableView: React.FC<QueueTableViewProps> = ({
           <tbody className="divide-y divide-slate-800/60 text-xs text-slate-300">
             {filteredRecipes.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-slate-500">
+                <td colSpan={9} className="py-12 text-center text-slate-500">
                   <FileText className="w-8 h-8 mx-auto text-slate-600 mb-2" />
                   <p className="text-sm font-medium text-slate-400">No recipe campaigns in this view</p>
                   <p className="text-xs text-slate-500 mt-1">
@@ -148,14 +195,28 @@ export const QueueTableView: React.FC<QueueTableViewProps> = ({
                 </td>
               </tr>
             ) : (
-              filteredRecipes.map((recipe) => (
-                <tr
-                  key={recipe.id}
-                  className="hover:bg-slate-900/40 transition-colors group cursor-pointer"
-                  onClick={() => onSelectRecipe(recipe)}
-                >
-                  {/* Title & Keyword */}
-                  <td className="py-3 px-4 max-w-xs">
+              filteredRecipes.map((recipe) => {
+                const isSelected = selectedIds.includes(recipe.id);
+                return (
+                  <tr
+                    key={recipe.id}
+                    className={`hover:bg-slate-900/40 transition-colors group cursor-pointer ${
+                      isSelected ? 'bg-indigo-950/20' : ''
+                    }`}
+                    onClick={() => onSelectRecipe(recipe)}
+                  >
+                    {/* Checkbox */}
+                    <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={(e) => handleToggleSelect(recipe.id, e)}
+                        className="rounded border-slate-700 bg-slate-900 text-pink-600 focus:ring-pink-500 cursor-pointer"
+                      />
+                    </td>
+
+                    {/* Title & Keyword */}
+                    <td className="py-3 px-4 max-w-xs">
                     <div className="font-semibold text-white truncate group-hover:text-pink-300 transition-colors">
                       {recipe.title}
                     </div>
@@ -272,7 +333,8 @@ export const QueueTableView: React.FC<QueueTableViewProps> = ({
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
